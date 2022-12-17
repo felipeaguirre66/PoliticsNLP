@@ -1,0 +1,16 @@
+openpyxl
+regex
+unidecode
+nltk
+stop_words
+spacy
+matplotlib
+pysentimiento
+sentiment-analysis-spanish
+sklearn
+keras
+tensorflow
+scikit-learn
+bertopic
+torch==1.13.0
+bertopic
