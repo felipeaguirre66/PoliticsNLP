@@ -760,8 +760,6 @@ class LDA_Model():
 
 import itertools
 
-import itertools
-
 class Spacy_Model():
 
     """
@@ -977,7 +975,9 @@ class Spacy_Model():
         a. Dict of N most similar phrases, with ID as keys and texts + score as values.
 
         """
-        
+        if not self.trained:
+            self.preprocess_training_data()
+            
         if self.pp_object:
             pp_data = self.pp_object.preprocess(new_document)
         else:
