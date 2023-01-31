@@ -8,6 +8,6 @@ This includes:
 2. Topic Modeling
 3. Semantic Similarity
 4. Sentiment Analysis
-5. Predicting Models: predict which opinion is the most semantically similar to the selected one, etc.
+5. Predicting Models: predict which opinion is the most semantically similar to the selected one, among others.
 
 All analysis were made using both shallow Machine Learning (LSA, LDA, TF-IDF) and Deep Learning (BERT) algorithms.
