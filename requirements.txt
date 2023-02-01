@@ -16,3 +16,4 @@ torch==1.13.0
 bertopic
 pyfiglet
 xlsxwriter
+sentence-transformers
