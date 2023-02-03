@@ -154,3 +154,80 @@ def visualize_topics(model, documents, num_top_words, n_components, des = ''):
     plt.xlabel(f'PCA 1 %{round(explained_var[0])}')
     plt.ylabel(f'PCA 2 %{round(explained_var[1])}')
     plt.show()
+    
+"""
+Bertopic plot
+
+"""    
+
+from IPython.display import display, Markdown
+
+def bertopic_plots(model, documents, des):
+    
+    """
+    This function plots every relevant BERTopic plot. 
+    
+    Input:
+    a. model: BERTopic
+    b. documents: preprocessed
+    c. des: name of desafio
+    
+    Output: none
+    
+    """
+    
+    
+    topics, probs = model.fit_transform(documents)
+    
+    
+    
+    # Define the text to display
+    text = f'<div style="text-align:center;"><span style="font-size:48px;color:blue;">Desafío {des}</span></div>'
+
+    # Get the unique Topics and their frequencies
+    unique_elements, counts = np.unique(topics, return_counts=True)
+    
+    plt.bar(unique_elements, counts)
+    
+    # Add axis labels and a title
+    plt.xlabel('Topic')
+    plt.ylabel('Frequency (N of documents)')
+    plt.xticks(unique_elements)
+    plt.title(f'Frequency of each Topic\nDes {des}')
+
+    # Visualize topics
+    fig_vt = model.visualize_topics()
+
+    # Importance of each word
+    fig_w = model.visualize_barchart(top_n_topics=len(model.get_topics()))
+    
+    # Vistualize documents
+    fig_vd = model.visualize_documents(documents, hide_annotations=True)
+    
+    # Heatmap topics
+    fig_hm = model.visualize_heatmap()
+
+    #Show images
+    print('\n\n')
+    display(Markdown(text))
+    
+    plt.show()
+    fig_vt.show()
+    fig_w.show()
+    fig_vd.show()
+    fig_hm.show()
+    
+    try:
+        # Most representative documents
+        pp = Preprocess(lemma=False)
+        original_texts = df['texto'].values.tolist()
+        prepro_texts = pp.preprocess(df['texto'])
+        prepro_texts = [' '.join(d) for d in prepro_texts]
+
+        for key, value in model.get_representative_docs().items():
+            print('\n'*4),print(f'TOPIC {key} most representative documents:\n')
+            for i, doc in enumerate(value):
+                indice = prepro_texts.index(doc)
+                print(f'{i+1}.\n {original_texts[indice]}\n\n')
+    except:
+        pass
