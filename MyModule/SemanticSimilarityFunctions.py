@@ -754,6 +754,7 @@ class BERT_Model():
         self.df = df
         self.pp_object = pp_object
         self.nlp = SentenceTransformer('hiiamsid/sentence_similarity_spanish_es')
+        # self.nlp = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
         self.trained = False
         self.converted_to_emb = False
         

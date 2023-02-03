@@ -62,13 +62,10 @@ class MostRepresentativeDocs():
     3. Creates a mean vector of each cluster
     4. Utilices cosine similarity to return the most similar documents to each cluster's mean vector.
     
-    Output: dictionary with each K-mean's cluster label as keys and each document with its similarity coefficient to the cluster's mean.
-    
     """
     
     def __init__(self):
         self.model = SentenceTransformer('hiiamsid/sentence_similarity_spanish_es')
-        self.encoded = False
         
     def preprocess_and_encode(self):
         if self.pp_object:
@@ -109,7 +106,7 @@ class MostRepresentativeDocs():
             sentences = self.labeled_docs[label_iter]
 
             best_simil = {}
-            for i, emb_doc_labeled in enumerate(sentences):
+            for emb_doc_labeled in sentences:
                 
                 index = self.emb_docs.tolist().index(emb_doc_labeled.tolist())
                 phrase = self.original_documents.tolist()[index]
@@ -123,7 +120,7 @@ class MostRepresentativeDocs():
         
         return best_doc_per_label
     
-    def get_representatives(self, documents, pp_object, n_clusters=3):
+    def get_representatives(self, documents, n_clusters=1, pp_object=None):
         self.documents = documents
         self.original_documents = documents
         self.n_clusters = n_clusters
@@ -133,7 +130,10 @@ class MostRepresentativeDocs():
         Input:
             -documents: list of str
             -pp_object: preprocessing object
-            -n_clusters = number of clusters to find representative docs on (if n_clusters=1, it gets the most rep doc for the whole documents)
+            -n_clusters = number of clusters to find representative docs on (if n_clusters=1, it gets the most rep doc for all the documents as a group)
+        
+        Output: 
+            -dictionary with each K-mean's cluster label as keys and each document with its similarity coefficient to the cluster's mean (descending).
         """
         self.preprocess_and_encode()
         self.fit_kmeans()

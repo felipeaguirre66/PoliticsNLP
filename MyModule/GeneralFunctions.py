@@ -98,3 +98,5 @@ def plot_word(elements, frequencies, plot_title = 'Plot', N = 20):
     plt.barh(elements[:N][::-1], frequencies[:N][::-1])
     plt.title(plot_title)
     plt.show()
+    
+    
