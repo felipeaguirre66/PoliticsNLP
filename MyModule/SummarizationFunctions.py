@@ -21,7 +21,7 @@ class T5Summary():
       self.model = AutoModelForSeq2SeqLM.from_pretrained(t5_ckpt)
 
    
-   def generate_summary(self, text, max_new_tokens=1000, num_beams=6, num_return_sequences=2):
+   def generate_summary(self, text, max_new_tokens=1000, num_beams=10, num_return_sequences=2):
       
       self.text=text
       self.max_new_tokens=max_new_tokens
@@ -44,7 +44,52 @@ class T5Summary():
          summarizations.append(summary)
          
       return summarizations
+
+
+from transformers import BertTokenizerFast, EncoderDecoderModel
+class BETOSummary():
    
+   """
+   Generate abstractive summaries utilizing BETO model.
+   ---------
+   Input: 
+      Text: str
+   
+   Output: 
+      Summarized text: str
+   """
+   
+   def __init__(self):
+      beto_ckpt = 'mrm8488/bert2bert_shared-spanish-finetuned-summarization'
+      print(f'ckpt:\n{beto_ckpt}')
+      self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+      self.tokenizer = BertTokenizerFast.from_pretrained(beto_ckpt)
+      self.model = EncoderDecoderModel.from_pretrained(beto_ckpt)
+
+   
+   def generate_summary(self, text, max_new_tokens=1000, num_beams=10, num_return_sequences=2):
+      
+      self.text=text
+      self.max_new_tokens=max_new_tokens
+      self.num_beams=num_beams
+      self.num_return_sequences=num_return_sequences
+      
+      inputs = self.tokenizer([self.text], padding="max_length", truncation=True, max_length=512, return_tensors="pt")
+      input_ids = inputs.input_ids.to(self.device)
+      attention_mask = inputs.attention_mask.to(self.device)
+      output = self.model.generate(input_ids,
+                                max_new_tokens=self.max_new_tokens, #cantidad maxima de palabras en la respuesta.
+                                num_beams = self.num_beams, #grado en el que explora otras alternativas antes de converger 
+                                                        #(mas grande = mejor resultado y más tiempo de ejecuciuon)
+                                do_sample = True, #enhances performance but increases runtime
+                                num_return_sequences=self.num_return_sequences, #number of summarizations to return              
+                                attention_mask=attention_mask)
+      summarizations = []
+      for res in output:
+         summary = self.tokenizer.decode(res, skip_special_tokens=True)
+         summarizations.append(summary)
+         
+      return summarizations
 
 
 
@@ -83,19 +128,19 @@ class MostRepresentativeDocs():
         self.kmeans.fit(self.emb_docs)
     
     def label_docs(self):
-        labeled_docs = {}
+        labeled_embs = {}
         for i in range(len(self.emb_docs)):
             current_label = self.kmeans.labels_[i]
-            if current_label in labeled_docs.keys():
-                labeled_docs[current_label].append(self.emb_docs[i])
+            if current_label in labeled_embs.keys():
+                labeled_embs[current_label].append(self.emb_docs[i])
             else:
-                labeled_docs[current_label] = [self.emb_docs[i]]
+                labeled_embs[current_label] = [self.emb_docs[i]]
         
-        self.labeled_docs = labeled_docs
+        self.labeled_embs = labeled_embs
     
     def find_labels_means(self):
         self.label_means = {}
-        for label, vectors in self.labeled_docs.items():
+        for label, vectors in self.labeled_embs.items():
             self.label_means[label] = sum(vectors)  / len(vectors)
         
     def find_representatives(self):
@@ -103,7 +148,7 @@ class MostRepresentativeDocs():
 
         for label_iter, label_mean in self.label_means.items():
 
-            sentences = self.labeled_docs[label_iter]
+            sentences = self.labeled_embs[label_iter]
 
             best_simil = {}
             for emb_doc_labeled in sentences:
