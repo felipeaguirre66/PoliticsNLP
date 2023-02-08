@@ -100,3 +100,13 @@ def plot_word(elements, frequencies, plot_title = 'Plot', N = 20):
     plt.show()
     
     
+def string_to_tuple(myStr):
+    """
+    Converts string '(1,2)' into tuple (1,2) (useful when reading xlsx files)'
+    """
+    myStr = myStr.replace("(", "")
+    myStr = myStr.replace(")", "")
+    myStr = myStr.replace(",", " ")
+    myTuple = myStr.split()
+    myTuple = tuple(map(int, myTuple))
+    return myTuple

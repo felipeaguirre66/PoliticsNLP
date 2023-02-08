@@ -17,17 +17,35 @@ from MyModule.GeneralFunctions import *
 from pysentimiento import create_analyzer
 from sentiment_analysis_spanish import sentiment_analysis
 
-def analyse_sentiment_3d(phrase, sent = ['POS', 'NEG', 'NEU']):
+class sentiment_analyzer_3d():
     
-    """ Predicts sentiment of phrase in three dimensions: POS, NEG, NEU. """
+    def __init__(self):
+        self.analyzer = create_analyzer(task="sentiment", lang="es")
+        pass
     
-    analyzer = create_analyzer(task="sentiment", lang="es")
+    def predict_sentiment_3d(self, phrase, sent = ['POS', 'NEG', 'NEU'], print_=False):
+        prediction = self.analyzer.predict(phrase)
+        
+        emotions = []
+        for s in sent:
+            emotions.append(prediction.probas[s])
+            if print_: print(f'{s}: {prediction}')
+        
+        return emotions
+
+# def analyse_sentiment_3d(phrase, sent = ['POS', 'NEG', 'NEU'], print_=False):
     
-    predictions = []
-    for s in sent:
-        prediction = analyzer.predict(phrase).probas[s]
-        predictions.append(prediction)
-        print(f'{s}: {prediction}')
+#     """ Predicts sentiment of phrase in three dimensions: POS, NEG, NEU. """
+    
+#     analyzer = create_analyzer(task="sentiment", lang="es")
+    
+#     predictions = []
+#     for s in sent:
+#         prediction = analyzer.predict(phrase).probas[s]
+#         predictions.append(prediction)
+#         if print_: print(f'{s}: {prediction}')
+    
+#     return predictions
         
         
         
