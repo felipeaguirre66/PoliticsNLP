@@ -17,3 +17,4 @@ bertopic
 pyfiglet
 xlsxwriter
 sentence-transformers
+imblearn
