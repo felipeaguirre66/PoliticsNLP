@@ -75,19 +75,39 @@ class Preprocess():
 import matplotlib.pyplot as plt
 from collections import Counter
 
-def count_words(words_list):
+def count_words(words_list, include_bigrams = True):
+
+    """ 
+    Count words in a document and return its elements and frequencies. 
     
-    """ Count words in a document and return its elements and frequencies. """
+     ------------------------------------------------------
     
+    Params:
+        include_bigrams: include bigrams in word count
+    
+    ------------------------------------------------------
+       
+    Input: list of words (text splited by whitespace)
+    Output: unqiue words and frequencies
+
+    """
+
     # Flatten the list of lists into a single list
-    if type(words_list[-1]==list):
+    if type(words_list[-1])==list:
         words_list = [item for sublist in words_list for item in sublist]
-    
-    counts = Counter(words_list)
-    
+
+    unigrams = words_list.copy()
+
+    if include_bigrams:
+        bigrams = [(words_list[i] + ' ' + words_list[i+1]) for i in range(len(words_list)-1)]
+        all_grams = unigrams + bigrams
+        counts = Counter(all_grams)
+    else:
+        counts = Counter(unigrams)
+
     # Sort the counts in descending order
     counts = sorted(counts.items(), key=lambda x: x[1], reverse=True)
-    
+
     # Extract the elements and their frequencies from the dictionary
     elements, frequencies = zip(*counts)
 

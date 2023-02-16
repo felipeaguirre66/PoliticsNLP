@@ -1,5 +1,11 @@
+from MyModule.GeneralFunctions import *
+
+import warnings
+
 import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+
+
 
 class T5Summary():
    
@@ -97,6 +103,8 @@ class BETOSummary():
 from sklearn.cluster import KMeans
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
 
 class MostRepresentativeDocs():
     
@@ -119,7 +127,8 @@ class MostRepresentativeDocs():
         
         self.emb_docs = self.model.encode(self.documents)
         
-    def fit_kmeans(self):   
+    def fit_kmeans(self, n_clusters=None):  
+                 
         self.kmeans = KMeans(
             init="k-means++",
             n_clusters=self.n_clusters,
@@ -166,6 +175,92 @@ class MostRepresentativeDocs():
         
         return best_doc_per_label
     
+    def elbow_method(self, documents, k_range=[1, 10], pp_object=None):
+        
+        """
+        Plot elbow method to find optimum K for K means
+        -----------------------------
+        Input:
+            documents: list of str
+            k_range: k range to try
+            pp_object: pre process object
+        
+        """
+        
+        self.pp_object = pp_object
+        self.documents = documents
+        
+        self.preprocess_and_encode()
+        
+        list_k = list(range(k_range[0],k_range[1]))
+        sse = []
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            for k in list_k:
+                km = KMeans(n_clusters=k)
+                km.fit(self.emb_docs)
+                sse.append(km.inertia_)
+            
+        plt.figure(figsize=(5, 5))
+        plt.plot(list_k, sse, '-o')
+        plt.xlabel('Number of clusters (k)')
+        plt.ylabel('SSD between each point and its centroid')
+        
+   
+    def visualize_documents_kmeans(self, documents, n_clusters, pp_object=None):
+        
+        """
+        Visualize document distribution with it's kmens cluster assigment
+        
+        Input:
+            documents: list of str
+            n_clusters: number of clusters to find
+        
+        Output: 
+            2D visualization
+        
+        WARNING: true distribution might be different given that PCA is applied, encoding 768 dimension into just 2.
+        """
+        self.n_clusters = n_clusters
+        self.pp_object = pp_object
+        self.documents = documents
+        
+        self.preprocess_and_encode()
+        
+        pca = PCA(n_components=2)
+        self.emb_docs = pca.fit_transform(self.emb_docs)
+        
+        self.fit_kmeans()
+        self.label_docs()
+        
+        # Define a color map
+        color_map = plt.cm.get_cmap('tab10', len(self.labeled_embs))
+
+        legend_labels = []
+        for i, (key, pca_data) in enumerate(self.labeled_embs.items()):
+            color = color_map(i)
+            x = [d[0] for d in pca_data]
+            y = [d[1] for d in pca_data]
+            plt.scatter(x, y, color=color, label=key)
+            legend_labels.append(f"Cluster{key}: {len(pca_data)} documents")
+        pca1, pca2 = pca.explained_variance_ratio_
+        plt.title('Documents distribution.')
+        plt.xlabel(f'Explained variance: {round(pca1*100)}%')
+        plt.ylabel(f'Explained variance: {round(pca2*100)}%')
+        plt.legend(legend_labels, loc='best', bbox_to_anchor=(1, 0.5))
+        plt.show()
+        
+    def plot_word_counts(self, documents, n_clusters, pp_object_transformers=None, pp_object_word_count=None):
+        
+       result_dict = self.get_representatives(documents=documents, n_clusters=n_clusters, pp_object=pp_object_transformers)
+       for key_clus, value_clus in result_dict.items():
+            only_text = [v[0] for v in value_clus]
+            pp_only_text = pp_object_word_count.preprocess(' '.join(only_text))[0]
+            words_desafio = pp_only_text.split(' ')
+            elements, frequencies = count_words(words_desafio)
+            plot_word(elements, frequencies, plot_title = f'Cluster {key_clus}.')
+        
+        
     def get_representatives(self, documents, n_clusters=1, pp_object=None):
         self.documents = documents
         self.original_documents = documents
