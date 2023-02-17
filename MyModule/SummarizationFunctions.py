@@ -101,6 +101,7 @@ class BETOSummary():
 
 
 from sklearn.cluster import KMeans
+import hdbscan
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.decomposition import PCA
@@ -118,8 +119,23 @@ class MostRepresentativeDocs():
     
     """
     
-    def __init__(self):
+    def __init__(self, cluster_algorithm='kmeans', min_cluster_size=5, min_samples=10):
+        """
+        Input: 
+            cluster_algorithm: Kmeans('kmeans'), HDBScan ('hdbscan')
+            
+            Kmeans:
+                n_cluster: NOT an input here, because it might need to be different for every function
+            
+            HDBScan:
+                min_cluster_size: minimun number of documents to constitute a cluster
+                min_samples: radious for wich documents inside are considered clusters
+            
+        """
         self.model = SentenceTransformer('hiiamsid/sentence_similarity_spanish_es')
+        self.cluster_algorithm = cluster_algorithm
+        self.min_cluster_size = min_cluster_size
+        self.min_samples = min_samples
         
     def preprocess_and_encode(self):
         if self.pp_object:
@@ -127,26 +143,40 @@ class MostRepresentativeDocs():
         
         self.emb_docs = self.model.encode(self.documents)
         
-    def fit_kmeans(self, n_clusters=None):  
-                 
-        self.kmeans = KMeans(
-            init="k-means++",
-            n_clusters=self.n_clusters,
-            n_init=10,
-            max_iter=300)
+    def fit_clustering_model(self):  
+
+        if self.cluster_algorithm == 'kmeans':
+            self.cluster_model = KMeans(
+                init="k-means++",
+                n_clusters=self.n_clusters,
+                n_init=30,
+                max_iter=1000)
+            
+        elif self.cluster_algorithm == 'hdbscan':
+              self.cluster_model = hdbscan.HDBSCAN(min_cluster_size=self.min_cluster_size, min_samples=self.min_samples)
         
-        self.kmeans.fit(self.emb_docs)
+        self.cluster_model.fit(self.emb_docs)
     
-    def label_docs(self):
+    def label_docs_emb(self):
         labeled_embs = {}
         for i in range(len(self.emb_docs)):
-            current_label = self.kmeans.labels_[i]
+            current_label = self.cluster_model.labels_[i]
             if current_label in labeled_embs.keys():
                 labeled_embs[current_label].append(self.emb_docs[i])
             else:
                 labeled_embs[current_label] = [self.emb_docs[i]]
         
         self.labeled_embs = labeled_embs
+        
+    def label_original_docs(self):
+        labeled_original_docs = {}
+        for i, kmeans_label in enumerate(self.cluster_model.labels_):
+            if kmeans_label in labeled_original_docs.keys():
+                labeled_original_docs[kmeans_label].append(self.original_documents[i])
+            else:
+                labeled_original_docs[kmeans_label] = [self.original_documents[i]]
+                
+        self.labeled_original_docs = labeled_original_docs
     
     def find_labels_means(self):
         self.label_means = {}
@@ -164,7 +194,7 @@ class MostRepresentativeDocs():
             for emb_doc_labeled in sentences:
                 
                 index = self.emb_docs.tolist().index(emb_doc_labeled.tolist())
-                phrase = self.original_documents.tolist()[index]
+                phrase = self.original_documents[index]#.tolist()[index]
                 
                 sim = cosine_similarity(emb_doc_labeled.reshape(1, -1), label_mean.reshape(1, -1))[0][0]
                 best_simil[phrase] = sim
@@ -178,7 +208,7 @@ class MostRepresentativeDocs():
     def elbow_method(self, documents, k_range=[1, 10], pp_object=None):
         
         """
-        Plot elbow method to find optimum K for K means
+        Plot elbow method (sum of squared distance for each K) to find optimum K for K means
         -----------------------------
         Input:
             documents: list of str
@@ -230,10 +260,9 @@ class MostRepresentativeDocs():
         pca = PCA(n_components=2)
         self.emb_docs = pca.fit_transform(self.emb_docs)
         
-        self.fit_kmeans()
-        self.label_docs()
+        self.fit_clustering_model()
+        self.label_docs_emb()
         
-        # Define a color map
         color_map = plt.cm.get_cmap('tab10', len(self.labeled_embs))
 
         legend_labels = []
@@ -251,22 +280,45 @@ class MostRepresentativeDocs():
         plt.show()
         
     def plot_word_counts(self, documents, n_clusters, pp_object_transformers=None, pp_object_word_count=None):
+        """
+        Plot word frequencia by each desafio's cluster.
+        -----------------------------------------------
+        Input:
+            Documents: list of str
+            n_clusters: to find KMeans
+            pp_object_transformers: preprocess docs before embedding
+            pp_object_word_count: preprocess docs before word count
+        """ 
         
-       result_dict = self.get_representatives(documents=documents, n_clusters=n_clusters, pp_object=pp_object_transformers)
-       for key_clus, value_clus in result_dict.items():
+        result_dict = self.get_representatives(documents=documents, n_clusters=n_clusters, pp_object=pp_object_transformers)
+        for key_clus, value_clus in result_dict.items():
             only_text = [v[0] for v in value_clus]
             pp_only_text = pp_object_word_count.preprocess(' '.join(only_text))[0]
             words_desafio = pp_only_text.split(' ')
             elements, frequencies = count_words(words_desafio)
-            plot_word(elements, frequencies, plot_title = f'Cluster {key_clus}.')
+            plot_word(elements, frequencies, plot_title = f'Cluster {key_clus} (N={len(only_text)}).')
+    
+    def cluster_and_label_original_docs(self, documents, n_clusters=1, pp_object=None):
+        """
+        Input:
+            documents: list of str
+            n_clusters: to find
         
-        
-    def get_representatives(self, documents, n_clusters=1, pp_object=None):
+        Output: 
+            Dictionary with cluster label (keys) and original document (values)
+        """
         self.documents = documents
         self.original_documents = documents
         self.n_clusters = n_clusters
         self.pp_object = pp_object
+
+        self.preprocess_and_encode()
+        self.fit_clustering_model()
+        self.label_original_docs()
         
+        return self.labeled_original_docs
+        
+    def get_representatives(self, documents, n_clusters=1, pp_object=None):
         """
         Input:
             -documents: list of str
@@ -276,9 +328,16 @@ class MostRepresentativeDocs():
         Output: 
             -dictionary with each K-mean's cluster label as keys and each document with its similarity coefficient to the cluster's mean (descending).
         """
+       
+        self.documents = documents
+        self.original_documents = documents
+        self.n_clusters = n_clusters
+        self.pp_object = pp_object
+        
+
         self.preprocess_and_encode()
-        self.fit_kmeans()
-        self.label_docs()
+        self.fit_clustering_model()
+        self.label_docs_emb()
         self.find_labels_means()
         return self.find_representatives()
        
