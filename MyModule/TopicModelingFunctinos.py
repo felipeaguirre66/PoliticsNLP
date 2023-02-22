@@ -5,7 +5,7 @@
 # Some imports
 import pandas as pd
 import regex as re
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import TruncatedSVD
@@ -145,14 +145,14 @@ def visualize_topics(model, documents, num_top_words, n_components, des = ''):
         print(f'Topic {i} = {", ".join(top_words)}\n')
         plt.annotate(label, xy=(topic_vectors[i, 0], topic_vectors[i, 1]))
     
-    explained_var = pca.explained_variance_ratio_ * 100
+    explained_var = pca.explained_variance_ratio_
     
     if des:
         plt.title(f'Des {des} Topic Distribution')
     else:
         plt.title('Topic Distribution')
-    plt.xlabel(f'PCA 1 %{round(explained_var[0])}')
-    plt.ylabel(f'PCA 2 %{round(explained_var[1])}')
+    plt.xlabel(f'PCA 1 %{round(explained_var[0] * 100)}')
+    plt.ylabel(f'PCA 2 %{round(explained_var[1] * 100)}')
     plt.show()
     
 """
