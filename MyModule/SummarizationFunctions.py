@@ -102,10 +102,17 @@ class BETOSummary():
 
 from sklearn.cluster import KMeans
 import hdbscan
+
+from sklearn.metrics import silhouette_score
+from sklearn.metrics import silhouette_samples
+
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.decomposition import PCA
+
 import matplotlib.pyplot as plt
+
+import numpy as np
 
 class MostRepresentativeDocs():
     
@@ -136,6 +143,8 @@ class MostRepresentativeDocs():
         self.cluster_algorithm = cluster_algorithm
         self.min_cluster_size = min_cluster_size
         self.min_samples = min_samples
+        
+        self.found_clusters = False
         
     def preprocess_and_encode(self):
         if self.pp_object:
@@ -202,8 +211,10 @@ class MostRepresentativeDocs():
             sorted_best_simil = sorted(best_simil.items(), key=lambda x: x[1], reverse=True)
             
             best_doc_per_label[label_iter] = sorted_best_simil
+            
+            self.best_doc_per_label = best_doc_per_label
         
-        return best_doc_per_label
+        return self.best_doc_per_label
     
     def elbow_method(self, documents, k_range=[1, 10], pp_object=None):
         
@@ -235,7 +246,48 @@ class MostRepresentativeDocs():
         plt.plot(list_k, sse, '-o')
         plt.xlabel('Number of clusters (k)')
         plt.ylabel('SSD between each point and its centroid')
+    
+    
+    def get_average_silhouette_score(self):
+        return silhouette_score(self.emb_docs, self.cluster_model.labels_)
+    
+    def get_cluster_silhouette_score(self, cluster_index=0):
+    
+        cluster_mask = (self.cluster_model.labels_ == cluster_index)  # boolean mask for selecting points in the cluster
+
+        # calculate the Silhouette score for each point in the data
+        silhouette_scores = silhouette_samples(self.emb_docs, self.cluster_model.labels_)
+
+        # select the Silhouette scores for the points in the cluster
+        cluster_scores = silhouette_scores[cluster_mask]
+
+        # compute the average Silhouette score for the cluster
+        return cluster_scores.mean()
+    
+    def plot_elbow_silhouette_score(self, range_n_clusters=[2,20]):
         
+        range_n_clusters = range(range_n_clusters[0],range_n_clusters[1])
+        
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            silhouette_avg = []
+            for num_clusters in range_n_clusters:
+                kmeans = KMeans(n_clusters=num_clusters)
+                kmeans.fit(self.emb_docs)
+                cluster_labels = kmeans.labels_
+                silhouette_avg.append(silhouette_score(self.emb_docs, cluster_labels))
+        
+        # add a label for the maximum X value
+        max_index = np.argmax(silhouette_avg)
+        max_x = range_n_clusters[max_index]
+        plt.axvline(x=max_x, color='r', linestyle='--')
+        plt.text(max_x, 1.1*np.max(silhouette_avg), f'Maximum X value: {max_x:.2f}', ha='center')
+           
+        plt.plot(range_n_clusters,silhouette_avg,'bx-')    
+        plt.xlabel('Values of K') 
+        plt.ylabel('Silhouette score') 
+        plt.title('Silhouette analysis For Optimal k')
+        plt.show()
    
     def visualize_documents_kmeans(self, documents, n_clusters, pp_object=None):
         
@@ -290,7 +342,12 @@ class MostRepresentativeDocs():
             pp_object_word_count: preprocess docs before word count
         """ 
         
-        result_dict = self.get_representatives(documents=documents, n_clusters=n_clusters, pp_object=pp_object_transformers)
+        # Find clusters ONLY if not allready done (so clusters are the same across all model functions)
+        if not self.found_clusters:
+            result_dict = self.get_representatives(documents=documents, n_clusters=n_clusters, pp_object=pp_object_transformers)
+        else:
+            result_dict = self.best_doc_per_label
+            
         for key_clus, value_clus in result_dict.items():
             only_text = [v[0] for v in value_clus]
             pp_only_text = pp_object_word_count.preprocess(' '.join(only_text))[0]
@@ -333,6 +390,8 @@ class MostRepresentativeDocs():
         self.original_documents = documents
         self.n_clusters = n_clusters
         self.pp_object = pp_object
+        
+        self.found_clusters = True
         
 
         self.preprocess_and_encode()
