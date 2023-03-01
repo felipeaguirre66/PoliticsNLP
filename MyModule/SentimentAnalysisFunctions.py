@@ -32,20 +32,6 @@ class sentiment_analyzer_3d():
             if print_: print(f'{s}: {prediction}')
         
         return emotions
-
-# def analyse_sentiment_3d(phrase, sent = ['POS', 'NEG', 'NEU'], print_=False):
-    
-#     """ Predicts sentiment of phrase in three dimensions: POS, NEG, NEU. """
-    
-#     analyzer = create_analyzer(task="sentiment", lang="es")
-    
-#     predictions = []
-#     for s in sent:
-#         prediction = analyzer.predict(phrase).probas[s]
-#         predictions.append(prediction)
-#         if print_: print(f'{s}: {prediction}')
-    
-#     return predictions
         
         
         
