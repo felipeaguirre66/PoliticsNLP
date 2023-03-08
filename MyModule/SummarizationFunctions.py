@@ -126,7 +126,7 @@ class MostRepresentativeDocs():
     
     """
     
-    def __init__(self, cluster_algorithm='kmeans', min_cluster_size=5, min_samples=10):
+    def __init__(self, cluster_algorithm='kmeans', min_cluster_size=5, min_samples=10, n_pca=None):
         """
         Input: 
             cluster_algorithm: Kmeans('kmeans'), HDBScan ('hdbscan')
@@ -143,6 +143,7 @@ class MostRepresentativeDocs():
         self.cluster_algorithm = cluster_algorithm
         self.min_cluster_size = min_cluster_size
         self.min_samples = min_samples
+        self.n_pca = n_pca
         
         self.found_clusters = False
         
@@ -151,6 +152,12 @@ class MostRepresentativeDocs():
             self.documents = self.pp_object.preprocess(self.documents)
         
         self.emb_docs = self.model.encode(self.documents)
+        
+        if self.n_pca:
+            self.n_pca = min(self.n_pca, self.emb_docs.shape[0], self.emb_docs.shape[1])
+            pca = PCA(n_components=self.n_pca)
+            self.emb_docs = pca.fit_transform(self.emb_docs)
+            print(f'Reducing embedding dimensions to {self.emb_docs.shape[-1]}')
         
     def fit_clustering_model(self):  
 
