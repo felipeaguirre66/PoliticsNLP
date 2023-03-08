@@ -126,7 +126,7 @@ class MostRepresentativeDocs():
     
     """
     
-    def __init__(self, cluster_algorithm='kmeans', min_cluster_size=5, min_samples=10, n_pca=None):
+    def __init__(self, cluster_algorithm='kmeans', min_cluster_size=2, min_samples=1, n_pca=None):
         """
         Input: 
             cluster_algorithm: Kmeans('kmeans'), HDBScan ('hdbscan')
