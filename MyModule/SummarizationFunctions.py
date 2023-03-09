@@ -126,24 +126,16 @@ class MostRepresentativeDocs():
     
     """
     
-    def __init__(self, cluster_algorithm='kmeans', min_cluster_size=2, min_samples=1, n_pca=None):
+    def __init__(self, cluster_algorithm='kmeans', n_pca=None, **kwargs):
         """
         Input: 
             cluster_algorithm: Kmeans('kmeans'), HDBScan ('hdbscan')
             
-            Kmeans:
-                n_cluster: NOT an input here, because it might need to be different for every function
-            
-            HDBScan:
-                min_cluster_size: minimun number of documents to constitute a cluster
-                min_samples: radious for wich documents inside are considered clusters
-            
         """
         self.model = SentenceTransformer('hiiamsid/sentence_similarity_spanish_es')
         self.cluster_algorithm = cluster_algorithm
-        self.min_cluster_size = min_cluster_size
-        self.min_samples = min_samples
         self.n_pca = n_pca
+        self.kwargs = kwargs if kwargs is not None else None
         
         self.found_clusters = False
         
@@ -165,11 +157,12 @@ class MostRepresentativeDocs():
             self.cluster_model = KMeans(
                 init="k-means++",
                 n_clusters=self.n_clusters,
-                n_init=30,
-                max_iter=1000)
+                n_init=100,
+                max_iter=1000,
+                **self.kwargs)
             
         elif self.cluster_algorithm == 'hdbscan':
-              self.cluster_model = hdbscan.HDBSCAN(min_cluster_size=self.min_cluster_size, min_samples=self.min_samples)
+              self.cluster_model = hdbscan.HDBSCAN(**self.kwargs)
         
         self.cluster_model.fit(self.emb_docs)
     
