@@ -288,6 +288,30 @@ class MostRepresentativeDocs():
         plt.ylabel('Silhouette score') 
         plt.title('Silhouette analysis For Optimal k')
         plt.show()
+    
+    def elbow_pca_explained_variance(self, documents, pp_object=None):
+        
+        self.pp_object = pp_object
+        self.documents = documents
+        
+        self.preprocess_and_encode()
+        
+        range_n_dimensions = range(2, min(self.emb_docs.shape[0], self.emb_docs.shape[1]))
+        
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            explained_var = []
+            for num_d in range_n_dimensions:
+                pca = PCA(n_components=num_d)
+                pca.fit(self.emb_docs)
+                explained_var.append(sum(pca.explained_variance_ratio_))
+        
+        # add a label for the maximum X value    
+        plt.plot(range_n_dimensions, explained_var,'bx-')    
+        plt.xlabel('Number of dimensions') 
+        plt.ylabel('Explained variance percentage') 
+        plt.title('PCA Explained variance')
+        plt.show()
    
     def visualize_documents_kmeans(self, documents, n_clusters, pp_object=None):
         
