@@ -107,6 +107,11 @@ from sklearn.metrics import silhouette_score
 from sklearn.metrics import silhouette_samples
 
 from sentence_transformers import SentenceTransformer
+from sklearn.decomposition import TruncatedSVD
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import Normalizer
+
+
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.decomposition import PCA
 
@@ -126,13 +131,22 @@ class MostRepresentativeDocs():
     
     """
     
-    def __init__(self, cluster_algorithm='kmeans', n_pca=None, **kwargs):
+    def __init__(self, model_algo='both', cluster_algorithm='kmeans', n_pca=None, **kwargs):
         """
         Input: 
             cluster_algorithm: Kmeans('kmeans'), HDBScan ('hdbscan')
+            model_algo (doc embeddings): bert, lsa 
             
         """
-        self.model = SentenceTransformer('hiiamsid/sentence_similarity_spanish_es')
+        if model_algo == 'bert':
+            self.model = SentenceTransformer('hiiamsid/sentence_similarity_spanish_es')
+        elif model_algo == 'lsa':
+            self.model = TruncatedSVD(n_components=300)
+        elif model_algo == 'both':
+            self.model1 = SentenceTransformer('hiiamsid/sentence_similarity_spanish_es')
+            self.model2 = TruncatedSVD(n_components=300)
+        
+        self.model_algo = model_algo
         self.cluster_algorithm = cluster_algorithm
         self.n_pca = n_pca
         self.kwargs = kwargs if kwargs is not None else None
@@ -143,7 +157,26 @@ class MostRepresentativeDocs():
         if self.pp_object:
             self.documents = self.pp_object.preprocess(self.documents)
         
-        self.emb_docs = self.model.encode(self.documents)
+        if self.model_algo == 'bert':
+            self.emb_docs = self.model.encode(self.documents)
+            
+        elif self.model_algo == 'lsa':
+            vectorizer = TfidfVectorizer()
+            X = vectorizer.fit_transform(self.documents)
+            lsa_matrix = self.model.fit_transform(X)
+            normalizer = Normalizer(copy=False)
+            self.emb_docs = normalizer.fit_transform(lsa_matrix)
+        
+        elif self.model_algo == 'both':
+            emb_docs1 = self.model1.encode(self.documents)
+            vectorizer = TfidfVectorizer()
+            X = vectorizer.fit_transform(self.documents)
+            lsa_matrix = self.model2.fit_transform(X)
+            normalizer = Normalizer(copy=False)
+            emb_docs2 = normalizer.fit_transform(lsa_matrix)
+            self.emb_docs = np.concatenate((emb_docs1, emb_docs2), axis=1)
+        
+        print(f'Working with {self.model_algo} model.')
         
         if self.n_pca:
             self.n_pca = min(self.n_pca, self.emb_docs.shape[0], self.emb_docs.shape[1])
@@ -290,6 +323,8 @@ class MostRepresentativeDocs():
         plt.show()
     
     def elbow_pca_explained_variance(self, documents, pp_object=None):
+        
+        print(f'Working with {self.model_algo}.')
         
         self.pp_object = pp_object
         self.documents = documents
