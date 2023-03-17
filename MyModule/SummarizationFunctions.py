@@ -111,9 +111,11 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import Normalizer
 
-
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.decomposition import PCA
+
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from transformers import AutoTokenizer, GPT2Model
 
 import matplotlib.pyplot as plt
 
@@ -131,17 +133,31 @@ class MostRepresentativeDocs():
     
     """
     
-    def __init__(self, model_algo='both', cluster_algorithm='kmeans', n_pca=None, **kwargs):
+    def __init__(self, model_algo='both', cluster_algorithm='kmeans', n_pca=None, pre_trained_bert=None, **kwargs):
         """
         Input: 
             cluster_algorithm: Kmeans('kmeans'), HDBScan ('hdbscan')
-            model_algo (doc embeddings): bert, lsa 
+            **kwargs: either KMeans/HDBScan parameters
+            model_algo (doc embeddings): bert, lsa, gpt2
+            pre_trained_bert: source of pre trained bert
+                        - hiiamsid/sentence_similarity_spanish_es
+                        - IIC/dpr-spanish-passage_encoder-squades-base
+            
             
         """
         if model_algo == 'bert':
-            self.model = SentenceTransformer('hiiamsid/sentence_similarity_spanish_es')
+            if not pre_trained_bert:
+                pre_trained_bert = 'hiiamsid/sentence_similarity_spanish_es'
+            self.model = SentenceTransformer(pre_trained_bert)
+            print(f'Using {pre_trained_bert}')
+            
         elif model_algo == 'lsa':
             self.model = TruncatedSVD(n_components=300)
+            
+        elif model_algo == 'gpt2':
+            self.tokenizer = AutoTokenizer.from_pretrained("PlanTL-GOB-ES/gpt2-large-bne")
+            self.model = GPT2Model.from_pretrained("PlanTL-GOB-ES/gpt2-large-bne")
+            
         elif model_algo == 'both':
             self.model1 = SentenceTransformer('hiiamsid/sentence_similarity_spanish_es')
             self.model2 = TruncatedSVD(n_components=300)
@@ -166,6 +182,29 @@ class MostRepresentativeDocs():
             lsa_matrix = self.model.fit_transform(X)
             normalizer = Normalizer(copy=False)
             self.emb_docs = normalizer.fit_transform(lsa_matrix)
+        
+        elif self.model_algo == 'gpt2':
+            self.emb_docs = []
+
+            for sent1 in self.documents:
+
+                # Tokenize the sentences and convert to IDs
+                sent1_ids = self.tokenizer.encode(sent1, add_special_tokens=True, return_tensors="pt")
+
+                # Pad the sequences to a fixed length (e.g., 50)
+                max_length = 50
+                sent1_ids = torch.nn.functional.pad(sent1_ids, (0, max_length - sent1_ids.shape[1]), 'constant', 0)
+
+                # Create attention masks
+                sent1_mask = torch.ones_like(sent1_ids)
+
+                # Get the sentence vectors from the GPT-2 API (assuming it's called `gpt2_api`)
+                with torch.no_grad():
+                    sent1_vec = self.model(input_ids=sent1_ids, attention_mask=sent1_mask).last_hidden_state.mean(dim=1).squeeze()
+                
+                self.emb_docs.append(sent1_vec.flatten().numpy())
+            
+            self.emb_docs = np.array(self.emb_docs)
         
         elif self.model_algo == 'both':
             emb_docs1 = self.model1.encode(self.documents)
