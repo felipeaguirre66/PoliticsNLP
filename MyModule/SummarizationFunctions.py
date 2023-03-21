@@ -1,4 +1,5 @@
 from MyModule.GeneralFunctions import *
+from MyModule.FineTuningFunctions import *
 
 import warnings
 
@@ -133,7 +134,7 @@ class MostRepresentativeDocs():
     
     """
     
-    def __init__(self, model_algo='both', cluster_algorithm='kmeans', n_pca=None, pre_trained_bert=None, **kwargs):
+    def __init__(self, model_algo='both', cluster_algorithm='kmeans', n_pca=None, pre_trained=None, **kwargs):
         """
         Input: 
             cluster_algorithm: Kmeans('kmeans'), HDBScan ('hdbscan')
@@ -142,21 +143,25 @@ class MostRepresentativeDocs():
             pre_trained_bert: source of pre trained bert
                         - hiiamsid/sentence_similarity_spanish_es
                         - IIC/dpr-spanish-passage_encoder-squades-base
-            
-            
         """
+        
         if model_algo == 'bert':
-            if not pre_trained_bert:
-                pre_trained_bert = 'hiiamsid/sentence_similarity_spanish_es'
-            self.model = SentenceTransformer(pre_trained_bert)
-            print(f'Using {pre_trained_bert}')
+            if not pre_trained: pre_trained = 'hiiamsid/sentence_similarity_spanish_es'
+            self.model = SentenceTransformer(pre_trained)
+            print(f'Using {pre_trained}')
             
         elif model_algo == 'lsa':
             self.model = TruncatedSVD(n_components=300)
             
         elif model_algo == 'gpt2':
-            self.tokenizer = AutoTokenizer.from_pretrained("PlanTL-GOB-ES/gpt2-large-bne")
-            self.model = GPT2Model.from_pretrained("PlanTL-GOB-ES/gpt2-large-bne")
+            if not pre_trained: pre_trained= 'PlanTL-GOB-ES/gpt2-large-bne'
+            self.tokenizer = AutoTokenizer.from_pretrained(pre_trained)
+            self.model = GPT2Model.from_pretrained(pre_trained)
+        
+        elif model_algo == 'fine_tuned_bert':
+            original_model = 'hiiamsid/sentence_similarity_spanish_es'
+            self.model = MyFineTunedBert()
+            self.model.load_model(pre_trained, original_model)
             
         elif model_algo == 'both':
             self.model1 = SentenceTransformer('hiiamsid/sentence_similarity_spanish_es')
@@ -173,7 +178,7 @@ class MostRepresentativeDocs():
         if self.pp_object:
             self.documents = self.pp_object.preprocess(self.documents)
         
-        if self.model_algo == 'bert':
+        if self.model_algo == 'bert' or self.model_algo == 'fine_tuned_bert':
             self.emb_docs = self.model.encode(self.documents)
             
         elif self.model_algo == 'lsa':
@@ -185,24 +190,25 @@ class MostRepresentativeDocs():
         
         elif self.model_algo == 'gpt2':
             self.emb_docs = []
-
-            for sent1 in self.documents:
+            
+            for sent in self.documents:
+                if len(sent)==0: sent = 'no_contesta' # there cannot be '' sents
 
                 # Tokenize the sentences and convert to IDs
-                sent1_ids = self.tokenizer.encode(sent1, add_special_tokens=True, return_tensors="pt")
+                sent_ids = self.tokenizer.encode(sent, add_special_tokens=True, return_tensors="pt")
 
                 # Pad the sequences to a fixed length (e.g., 50)
                 max_length = 50
-                sent1_ids = torch.nn.functional.pad(sent1_ids, (0, max_length - sent1_ids.shape[1]), 'constant', 0)
+                sent_ids = torch.nn.functional.pad(sent_ids, (0, max_length - sent_ids.shape[1]), 'constant', 0)
 
                 # Create attention masks
-                sent1_mask = torch.ones_like(sent1_ids)
+                sent_mask = torch.ones_like(sent_ids)
 
-                # Get the sentence vectors from the GPT-2 API (assuming it's called `gpt2_api`)
+                # Get the sentence vectors from the GPT-2 API
                 with torch.no_grad():
-                    sent1_vec = self.model(input_ids=sent1_ids, attention_mask=sent1_mask).last_hidden_state.mean(dim=1).squeeze()
+                    sent_vec = self.model(input_ids=sent_ids, attention_mask=sent_mask).last_hidden_state.mean(dim=1).squeeze()
                 
-                self.emb_docs.append(sent1_vec.flatten().numpy())
+                self.emb_docs.append(sent_vec.flatten().numpy())
             
             self.emb_docs = np.array(self.emb_docs)
         
