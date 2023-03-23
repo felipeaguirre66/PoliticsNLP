@@ -21,3 +21,5 @@ imblearn
 xgboost
 catboost
 lightgbm
+praw
+langdetect
