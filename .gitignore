@@ -6,4 +6,4 @@ Classification/df_predic.csv # too heavy, tracking df_predic.rar instead
 **/df_predic.csv
 **/df_predic_500D.csv
 **/Datasets/*
-**/fine_tuned_bert_1.pt
+**/Models/*

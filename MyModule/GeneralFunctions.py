@@ -20,10 +20,10 @@ stop_words = sw.get_stop_words('es')
 class Preprocess():
 
     """
-        Preprocess: keep only alphanumeric, lemmatized and drop stop words.
+        Preprocess: keep only alphanumeric, lemmatized and/or drop stop words.
         Join: returns words in a str
 
-        Input: str, list of str or column with str
+        Input: str, list of str or str column
 
     """
     

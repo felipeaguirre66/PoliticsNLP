@@ -16,7 +16,7 @@ class MyFineTunedBert():
         self.tokenizer = BertTokenizer.from_pretrained(original_model)
 
         # Load the saved state_dict of the model
-        state_dict = torch.load(path)
+        state_dict = torch.load(path, map_location=torch.device('cpu'))
 
         # Instantiate a new model using the same configuration as the original model
         self.model = BertForMaskedLM.from_pretrained(original_model, state_dict=state_dict)
