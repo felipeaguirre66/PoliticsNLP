@@ -130,3 +130,21 @@ def string_to_tuple(myStr):
     myTuple = myStr.split()
     myTuple = tuple(map(int, myTuple))
     return myTuple
+
+from sklearn.metrics import r2_score
+from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_absolute_error
+
+def print_performance(y_val, y_pred, y_proba=None):
+
+    # Calculate R-squared score
+    r2 = r2_score(y_val, y_pred)
+    print('R-squared score:', r2)
+    
+    # Calculate MSE
+    mse = mean_squared_error(y_val, y_pred)
+    print('Mean Squared Error:', mse)
+    
+    # Calculate MAE
+    mae = mean_absolute_error(y_val, y_pred)
+    print('Mean Absolute Error:', mae)
